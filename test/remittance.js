@@ -8,6 +8,7 @@ contract('Remittance Hub and Spoke', function(accounts) {
   let remittance;
   let remittanceFactory;
   let remittanceInstance;
+  let invalidRemittance;
   const { fromAscii, toBN, soliditySha3, padRight } = web3.utils; 
   const { getBalance } = web3.eth; 
   const [alice, bob, carol] = accounts;
@@ -15,6 +16,7 @@ contract('Remittance Hub and Spoke', function(accounts) {
   const invalidPassword = padRight(fromAscii("password3"), 64);
   const expiresAfter = 24;
   const secret = soliditySha3(receiverPassword, carol);
+  const validAddress = "0xdD870fA1b7C4700F2BD7f44238821C26f7392148";
   const invalidAddress = "0x0000000000000000000000000000000000000000";
   const remittanceValue = 100;
   const factoryFee = 1;
@@ -22,7 +24,7 @@ contract('Remittance Hub and Spoke', function(accounts) {
   beforeEach('deploy new instance', async () => {
     remittanceFactory = await RemittanceFactory.new({ from: alice });
     remittance = await remittanceFactory.createRemittance({ from: alice });
-    remittanceInstance = await Remittance.at(remittance.receipt.logs[0].args.remittance);
+    remittanceInstance = await Remittance.at(remittance.receipt.logs[2].args.remittance);
   })
 
   it('should fail minimum value error', async () => {
@@ -150,5 +152,13 @@ contract('Remittance Hub and Spoke', function(accounts) {
     const response = await remittanceInstance.withdraw({ from: carol });
 
     assert.strictEqual(response.receipt.logs[0].event, "LogWithdrawn");
+  })
+
+  it('should not create remittance that was not deployed by factory', async () => {
+    invalidRemittance = await Remittance.new(validAddress,{ from: alice });
+    
+    await truffleAssert.fails(
+      invalidRemittance.create(secret, expiresAfter, { from: alice, value: 3 })
+    );
   })
 });
